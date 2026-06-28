@@ -146,6 +146,16 @@ class ManualBridgeClient:
             },
         )
 
+    async def unbind_me(self, qq_number: str, qq_name: str) -> dict[str, Any]:
+        return await self.request_json(
+            "unbind",
+            "POST",
+            {
+                "qqNumber": clean_text(qq_number),
+                "qqName": clean_text(qq_name),
+            },
+        )
+
     def format_bind_result(self, qq_number: str, qq_name: str, result: dict[str, Any]) -> str:
         if not result.get("ok"):
             return self.format_error("绑定", result)
@@ -197,3 +207,15 @@ class ManualBridgeClient:
             f"EOS ID：{eos_id}\n"
             f"游戏时长：{game_hours} 小时"
         )
+
+    def format_unbind_result(self, qq_number: str, qq_name: str, result: dict[str, Any]) -> str:
+        if not result.get("ok"):
+            return self.format_error("解绑我的信息", result)
+        body = result.get("body") if isinstance(result, dict) else {}
+        data = body.get("data") if isinstance(body, dict) else {}
+        payload = data.get("data") if isinstance(data, dict) and isinstance(data.get("data"), dict) else data
+        player = payload.get("player") if isinstance(payload, dict) else None
+        if isinstance(player, dict):
+            game_name = clean_text(player.get("gameName") or player.get("name") or "未知玩家")
+            return f"已成功解除 {qq_name}（{qq_number}）与 {game_name} 的绑定"
+        return f"已成功解除 {qq_name}（{qq_number}）的绑定"

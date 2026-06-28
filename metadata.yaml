@@ -1,6 +1,6 @@
 name: bzss_bot_plugin
 display_name: BZSS Bot Plugin
-desc: BZSS 战队机器人插件。支持 Steam ID 绑定和查询我的信息。
-version: v1.2.0
+desc: BZSS 战队机器人插件。支持 Steam ID 绑定、查询我的信息和解绑我的信息。
+version: v1.3.0
 author: Antigravity
 repo: ""

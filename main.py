@@ -73,3 +73,16 @@ class MyPlugin(Star):
 
         self.bridge.log("WARN", f"astrbot query-me failed qq={qq} nickname={nickname} result={result}")
         yield event.plain_result(self.bridge.format_error("查询我的信息", result))
+
+    @filter.command("解绑")
+    async def unbind_my_info(self, event: AstrMessageEvent):
+        qq, nickname = self._sender(event)
+        self.bridge.log("INFO", f"astrbot unbind command qq={qq} nickname={nickname}")
+        result = await self.bridge.unbind_me(qq, nickname)
+        if result.get("ok"):
+            self.bridge.log("INFO", f"astrbot unbind success qq={qq} nickname={nickname}")
+            yield event.plain_result(self.bridge.format_unbind_result(qq, nickname, result))
+            return
+
+        self.bridge.log("WARN", f"astrbot unbind failed qq={qq} nickname={nickname} result={result}")
+        yield event.plain_result(self.bridge.format_error("解绑我的信息", result))
