@@ -1,6 +1,6 @@
-name: bzss_bot_plugin # 插件唯一识别名
-display_name: BZSS Bot Plugin # 用于展示的名字
-desc: BZSS 战队机器人插件。支持服务器信息查询、Steam ID 绑定、预留位查询。
-version: v1.0.0 # 插件版本号
-author: Antigravity # 作者
-repo: https://github.com/Soulter/helloworld
+name: bzss_bot_plugin
+display_name: BZSS Bot Plugin
+desc: BZSS 战队机器人插件。支持 Steam ID 绑定和查询我的信息。
+version: v1.2.0
+author: Antigravity
+repo: ""
