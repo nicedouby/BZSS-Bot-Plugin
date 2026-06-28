@@ -65,6 +65,13 @@ class MyPlugin(Star):
     async def query_my_info(self, event: AstrMessageEvent):
         qq, nickname = self._sender(event)
         self.bridge.log("INFO", f"astrbot query-me command qq={qq} nickname={nickname}")
+        snapshot = await self.bridge.download_my_snapshot(qq, nickname)
+        if snapshot.get("ok") and snapshot.get("file_path"):
+            self.bridge.log("INFO", f"astrbot query-me snapshot success qq={qq} nickname={nickname} path={snapshot.get('file_path')} sending=image_result")
+            yield event.image_result(snapshot["file_path"])
+            return
+
+        self.bridge.log("WARN", f"astrbot query-me snapshot failed qq={qq} nickname={nickname} result={snapshot}")
         result = await self.bridge.query_me(qq, nickname)
         if result.get("ok"):
             self.bridge.log("INFO", f"astrbot query-me success qq={qq} nickname={nickname}")

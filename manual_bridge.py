@@ -15,10 +15,15 @@ DEFAULT_TIMEOUT_SECONDS = 10.0
 PLUGIN_DIR = Path(__file__).resolve().parent
 LOG_DIR = PLUGIN_DIR / "logs"
 LOG_FILE = LOG_DIR / "manual_bridge.log"
+SNAPSHOT_DIR = PLUGIN_DIR / "temp"
 
 
 def _ensure_log_dir() -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _ensure_snapshot_dir() -> None:
+    SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def clean_text(value: object) -> str:
@@ -52,6 +57,7 @@ class ManualBridgeClient:
         self.api_token = clean_text(api_token)
         self.timeout_seconds = parse_timeout(timeout_seconds)
         _ensure_log_dir()
+        _ensure_snapshot_dir()
         self.log("INFO", f"client initialized base_url={self.base_url}")
 
     def log(self, level: str, message: str) -> None:
@@ -155,6 +161,56 @@ class ManualBridgeClient:
                 "qqName": clean_text(qq_name),
             },
         )
+
+    async def download_my_snapshot(self, qq_number: str, qq_name: str) -> dict[str, Any]:
+        payload = {
+            "qqNumber": clean_text(qq_number),
+            "qqName": clean_text(qq_name),
+        }
+        url = f"{self.base_url.rstrip('/')}/me/snapshot"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_token}",
+        }
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+        def do_request() -> dict[str, Any]:
+            req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=self.timeout_seconds) as response:
+                content_type = clean_text(response.headers.get("Content-Type", ""))
+                image_bytes = response.read()
+                if "image/png" not in content_type.lower():
+                    raw = image_bytes.decode("utf-8", errors="replace")
+                    return self._response(False, status=response.status, body=self._loads(raw), message=raw)
+
+                file_path = SNAPSHOT_DIR / f"player_snapshot_{clean_text(qq_number) or 'unknown'}.png"
+                file_path.write_bytes(image_bytes)
+                return self._response(
+                    True,
+                    status=response.status,
+                    content_type=content_type,
+                    file_path=str(file_path),
+                    size=len(image_bytes),
+                )
+
+        self.log("INFO", f"request POST {url} payload={json.dumps(payload, ensure_ascii=False)}")
+        try:
+            result = await asyncio.to_thread(do_request)
+            self.log("INFO", f"snapshot response POST {url} status={result.get('status')} path={result.get('file_path', '-')}")
+            return result
+        except urllib.error.HTTPError as error:
+            try:
+                raw = error.read().decode("utf-8", errors="replace")
+            except Exception:
+                raw = ""
+            self.log("ERROR", f"snapshot http_error POST {url} status={error.code} body={raw}")
+            return self._response(False, status=error.code, body=self._loads(raw), error="HTTPError", message=raw or str(error))
+        except urllib.error.URLError as error:
+            self.log("ERROR", f"snapshot url_error POST {url} message={error.reason or error}")
+            return self._response(False, status=0, body={}, error="URLError", message=str(error.reason or error))
+        except Exception as error:
+            self.log("ERROR", f"snapshot exception POST {url} message={error}")
+            return self._response(False, status=0, body={}, error=error.__class__.__name__, message=str(error))
 
     def format_bind_result(self, qq_number: str, qq_name: str, result: dict[str, Any]) -> str:
         if not result.get("ok"):
