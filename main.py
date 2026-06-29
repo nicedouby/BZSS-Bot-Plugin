@@ -21,7 +21,7 @@ def _load_bridge_client():
 ManualBridgeClient = _load_bridge_client()
 
 
-@register("bzss_bot_plugin", "Antigravity", "BZSS Bot Plugin", "1.2.0")
+@register("bzss_bot_plugin", "Antigravity", "BZSS Bot Plugin", "1.4.0")
 class MyPlugin(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)
@@ -43,12 +43,33 @@ class MyPlugin(Star):
             return text[len(prefix):].strip()
         return text
 
-    @filter.command("绑定steam id")
+    def _help_text(self) -> str:
+        return (
+            "BZSS Bot Plugin command usage:\n"
+            "1. /绑定Steam\n"
+            "   绑定一个Steam账号.\n"
+            "2. /查询我的信息\n"
+            "   查询我的个人信息\n"
+            "3. /服务器信息\n"
+            "   获取服务器信息.\n"
+            "4. /解绑\n"
+            "   解绑账号.\n"
+            "5. /帮助\n"
+            "   Show this usage help.\n"
+        )
+
+    @filter.command("帮助")
+    async def help_command(self, event: AstrMessageEvent):
+        qq, nickname = self._sender(event)
+        self.bridge.log("INFO", f"astrbot help command qq={qq} nickname={nickname}")
+        yield event.plain_result(self._help_text())
+
+    @filter.command("绑定Steam")
     async def bind_steam(self, event: AstrMessageEvent):
         qq, nickname = self._sender(event)
-        steam64 = self._extract_tail(event.message_str, "绑定steam id")
+        steam64 = self._extract_tail(event.message_str, "bind_steam64")
         if not steam64:
-            yield event.plain_result("用法: /绑定Steam ID <17位Steam64>")
+            yield event.plain_result("Usage: /bind_steam64 <17-digit Steam64>")
             return
 
         self.bridge.log("INFO", f"astrbot bind command qq={qq} nickname={nickname} steam64={steam64}")
@@ -59,7 +80,7 @@ class MyPlugin(Star):
             return
 
         self.bridge.log("WARN", f"astrbot bind failed qq={qq} nickname={nickname} result={result}")
-        yield event.plain_result(self.bridge.format_error("绑定", result))
+        yield event.plain_result(self.bridge.format_error("bind", result))
 
     @filter.command("查询我的信息")
     async def query_my_info(self, event: AstrMessageEvent):
@@ -79,7 +100,20 @@ class MyPlugin(Star):
             return
 
         self.bridge.log("WARN", f"astrbot query-me failed qq={qq} nickname={nickname} result={result}")
-        yield event.plain_result(self.bridge.format_error("查询我的信息", result))
+        yield event.plain_result(self.bridge.format_error("query my info", result))
+
+    @filter.command("服务器信息")
+    async def server_info(self, event: AstrMessageEvent):
+        qq, nickname = self._sender(event)
+        self.bridge.log("INFO", f"astrbot server-info command qq={qq} nickname={nickname}")
+        snapshot = await self.bridge.download_server_info_snapshot()
+        if snapshot.get("ok") and snapshot.get("file_path"):
+            self.bridge.log("INFO", f"astrbot server-info snapshot success qq={qq} nickname={nickname} path={snapshot.get('file_path')} sending=image_result")
+            yield event.image_result(snapshot["file_path"])
+            return
+
+        self.bridge.log("WARN", f"astrbot server-info snapshot failed qq={qq} nickname={nickname} result={snapshot}")
+        yield event.plain_result(self.bridge.format_error("server info", snapshot))
 
     @filter.command("解绑")
     async def unbind_my_info(self, event: AstrMessageEvent):
@@ -92,4 +126,4 @@ class MyPlugin(Star):
             return
 
         self.bridge.log("WARN", f"astrbot unbind failed qq={qq} nickname={nickname} result={result}")
-        yield event.plain_result(self.bridge.format_error("解绑我的信息", result))
+        yield event.plain_result(self.bridge.format_error("unbind", result))
